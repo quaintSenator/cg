@@ -1,0 +1,25 @@
+#pragma kernel ScanKernel
+
+Texture2D _CameraColorRT;
+RWTexture2D<float4> _ResultRT;
+
+float4 _PlayerPos;
+float4 _ScreenResolution;
+
+float4 _ScanConfig;
+#define ScanLineDistance _ScanConfig.x
+#define ScanLineWidth    _ScanConfig.y
+
+//获取深度需要加载这个头文件
+//#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+
+[numthreads(32, 24, 1)]
+void ScanKernel (uint3 id : SV_DispatchThreadID)
+{
+    float4 color = _CameraColorRT[id.xy];
+
+    // 获取深度图的方法
+    // float inputPixelRawDepth = LOAD_TEXTURE2D_X(_CameraDepthTexture, screenUV * _ScreenResolution.xy).x;
+    
+    _ResultRT[id.xy] = color;
+}

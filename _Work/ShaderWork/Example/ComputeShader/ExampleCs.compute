@@ -1,0 +1,74 @@
+#pragma kernel CSMain
+#include "Debug.hlsl"
+
+Texture2D _InputTex;
+RWTexture2D<float4> _ResultRT;
+float4 _ScreenResolution;
+float _Threshold;
+
+float4 _ThreadConfig;
+#define ThreadGroupSizeX _ThreadConfig.x 
+#define ThreadGroupSizeY _ThreadConfig.y 
+#define ThreadPerGroupX  _ThreadConfig.z 
+#define ThreadPerGroupY  _ThreadConfig.w
+
+int _DebugType;
+#define ShowThread      _DebugType == 0
+#define ShowGroupThread _DebugType == 1
+#define ShowGroup       _DebugType == 2
+#define ShowBinarizatio _DebugType == 3
+
+[numthreads(32, 24, 1)]
+void CSMain
+(
+    uint3 threadId : SV_DispatchThreadID,
+    uint3 groupThreadId : SV_GroupThreadID,
+    uint groupThreadIndex : SV_GroupIndex,
+    uint3 groupId : SV_GroupID 
+)
+{
+    float3 color = 0;
+
+    if(ShowThread)
+    {
+        // color = threadId.x / _ScreenResolution.x;  
+        // color = threadId.y / _ScreenResolution.y;  
+        const int threadIndex = threadId.x + threadId.y * _ScreenResolution.x;
+        color = threadIndex / (_ScreenResolution.x * _ScreenResolution.y);  
+    }
+
+    if(ShowGroupThread)
+    {
+        const int _groupThreadIndex = groupThreadId.x + groupThreadId.y * ThreadPerGroupX;
+        color = _groupThreadIndex / (ThreadPerGroupX * ThreadPerGroupY);
+    }
+
+    if(ShowGroup)
+    {
+        const int groupIndex = groupId.x + groupId.y * ThreadGroupSizeX;
+        color = groupIndex / (ThreadGroupSizeX * ThreadGroupSizeY);
+
+        if (SampleDebugFontNumber(groupThreadId.xy, groupIndex))
+        {
+            color = float3(1, 0, 0);
+        }
+        if (SampleDebugFontNumber(groupThreadId.xy + 1, groupIndex))
+        {
+            color = 1;
+        }
+    
+        if(groupThreadId.x == 0 || groupThreadId.y == 0)
+        {
+            color = 1;
+        }
+    }
+
+    if(ShowBinarizatio)
+    {
+        color = _InputTex[threadId.xy];
+        const float gap = 0.299 * color.r + 0.587 * color.g + 0.184 * color.r;
+        color = gap > _Threshold ? float4(1, 1, 1, 1) : float4(0, 0, 0, 1);
+    }
+    
+    _ResultRT[threadId.xy] = float4(color, 1);
+}
